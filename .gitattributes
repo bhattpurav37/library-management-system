@@ -1,0 +1,7 @@
+# Normalize line endings on commit, check out as-is. Keeps diffs clean across Windows/Linux/macOS.
+* text=auto eol=lf
+
+# Binary files
+*.png binary
+*.jpg binary
+*.pdf binary

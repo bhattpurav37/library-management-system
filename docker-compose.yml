@@ -1,0 +1,37 @@
+version: "3.8"
+
+services:
+  library-api:
+    build: .
+    ports:
+      - "8881:8881"
+    environment:
+      SPRING_PROFILES_ACTIVE: prod
+      SERVER_PORT: "8881"
+      DB_HOST: db
+      DB_PORT: 5432
+      DB_NAME: librarydb
+      DB_USER: library
+      DB_PASSWORD: library
+    depends_on:
+      db:
+        condition: service_healthy
+
+  db:
+    image: postgres:16-alpine
+    environment:
+      POSTGRES_DB: librarydb
+      POSTGRES_USER: library
+      POSTGRES_PASSWORD: library
+    ports:
+      - "5432:5432"
+    volumes:
+      - pgdata:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U library -d librarydb"]
+      interval: 5s
+      timeout: 5s
+      retries: 5
+
+volumes:
+  pgdata:
