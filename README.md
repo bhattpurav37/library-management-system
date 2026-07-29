@@ -3,6 +3,10 @@
 REST API for a simple library — register borrowers and books, list books, and
 borrow/return books on behalf of a borrower.
 
+See [REQUIREMENTS.md](REQUIREMENTS.md) for a map of each task requirement to where
+it's implemented, and [ASSUMPTIONS.md](ASSUMPTIONS.md) for assumptions made beyond
+the task spec.
+
 ## Tech stack
 
 - Java 17, Spring Boot 3.2 (Web, Data JPA, Validation, Actuator)
