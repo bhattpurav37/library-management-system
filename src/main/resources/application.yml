@@ -7,6 +7,11 @@ spring:
     default-property-inclusion: non_null
     serialization:
       write-dates-as-timestamps: false
+  kafka:
+    bootstrap-servers: ${KAFKA_BOOTSTRAP_SERVERS:localhost:9092}
+    producer:
+      acks: all
+      retries: 10
 
 server:
   port: ${SERVER_PORT:8881}
@@ -28,6 +33,10 @@ logging:
     com.library: ${LOG_LEVEL:INFO}
 
 app:
+  kafka:
+    topics:
+      # Where BookCreatedEvent messages are published after a book registration commits.
+      book-created: ${KAFKA_TOPIC_BOOK_CREATED:library.book-created.v1}
   security:
     jwt:
       # HS256 signing key for both issuing and validating access tokens. Base64-encoded,

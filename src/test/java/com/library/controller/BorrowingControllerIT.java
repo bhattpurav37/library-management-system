@@ -3,10 +3,13 @@ package com.library.controller;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import com.library.dto.BookRequest;
 import com.library.dto.BorrowerRequest;
+import com.library.event.BookCreatedEvent;
 import org.junit.jupiter.api.Test;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.boot.test.autoconfigure.web.servlet.AutoConfigureMockMvc;
 import org.springframework.boot.test.context.SpringBootTest;
+import org.springframework.boot.test.mock.mockito.MockBean;
+import org.springframework.kafka.core.KafkaTemplate;
 import org.springframework.test.context.ActiveProfiles;
 import org.springframework.test.web.servlet.MockMvc;
 import org.springframework.test.web.servlet.MvcResult;
@@ -27,6 +30,10 @@ class BorrowingControllerIT {
 
     @Autowired
     private SecurityTestSupport security;
+
+    // Replaces the real template so no Kafka broker is needed (books are registered here as setup).
+    @MockBean
+    private KafkaTemplate<String, BookCreatedEvent> kafkaTemplate;
 
     @Test
     void secondBorrowerCannotBorrowBookThatIsAlreadyOut() throws Exception {

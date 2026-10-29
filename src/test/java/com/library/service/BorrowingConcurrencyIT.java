@@ -1,5 +1,6 @@
 package com.library.service;
 
+import com.library.event.BookCreatedEvent;
 import com.library.exception.BookAlreadyBorrowedException;
 import com.library.model.Book;
 import com.library.model.Borrower;
@@ -9,6 +10,8 @@ import com.library.service.interfaces.BorrowingService;
 import org.junit.jupiter.api.Test;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.boot.test.context.SpringBootTest;
+import org.springframework.boot.test.mock.mockito.MockBean;
+import org.springframework.kafka.core.KafkaTemplate;
 import org.springframework.test.context.ActiveProfiles;
 
 import java.util.ArrayList;
@@ -30,6 +33,10 @@ import static org.assertj.core.api.Assertions.assertThat;
 @SpringBootTest
 @ActiveProfiles("test")
 class BorrowingConcurrencyIT {
+
+    // Replaces the real template so no Kafka broker is needed (a book is saved here as setup).
+    @MockBean
+    private KafkaTemplate<String, BookCreatedEvent> kafkaTemplate;
 
     @Autowired
     private BorrowingService borrowingService;
