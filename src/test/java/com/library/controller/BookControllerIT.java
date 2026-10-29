@@ -24,18 +24,23 @@ class BookControllerIT {
     @Autowired
     private ObjectMapper objectMapper;
 
+    @Autowired
+    private SecurityTestSupport security;
+
     @Test
     void registerBook_thenAppearsInList() throws Exception {
         BookRequest request = new BookRequest("9780134685991", "Effective Java", "Joshua Bloch");
 
         mockMvc.perform(post("/api/v1/books")
+                        .header("Authorization", security.librarianBearer())
                         .contentType("application/json")
                         .content(objectMapper.writeValueAsString(request)))
                 .andExpect(status().isCreated())
                 .andExpect(jsonPath("$.title").value("Effective Java"))
                 .andExpect(jsonPath("$.available").value(true));
 
-        mockMvc.perform(get("/api/v1/books"))
+        mockMvc.perform(get("/api/v1/books")
+                        .header("Authorization", security.librarianBearer()))
                 .andExpect(status().isOk())
                 .andExpect(jsonPath("$[?(@.title == 'Effective Java')]", hasSize(1)));
     }
@@ -45,6 +50,7 @@ class BookControllerIT {
         String badPayload = "{\"isbn\":\"9780134685991\",\"title\":\"\",\"author\":\"Joshua Bloch\"}";
 
         mockMvc.perform(post("/api/v1/books")
+                        .header("Authorization", security.librarianBearer())
                         .contentType("application/json")
                         .content(badPayload))
                 .andExpect(status().isBadRequest());
@@ -56,11 +62,13 @@ class BookControllerIT {
         BookRequest conflicting = new BookRequest("9781491950357", "Some Other Book", "Sam Newman");
 
         mockMvc.perform(post("/api/v1/books")
+                        .header("Authorization", security.librarianBearer())
                         .contentType("application/json")
                         .content(objectMapper.writeValueAsString(first)))
                 .andExpect(status().isCreated());
 
         mockMvc.perform(post("/api/v1/books")
+                        .header("Authorization", security.librarianBearer())
                         .contentType("application/json")
                         .content(objectMapper.writeValueAsString(conflicting)))
                 .andExpect(status().isConflict());
