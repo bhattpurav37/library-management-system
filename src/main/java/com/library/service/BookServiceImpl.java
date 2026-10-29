@@ -1,5 +1,6 @@
 package com.library.service;
 
+import com.library.event.BookCreatedEvent;
 import com.library.exception.IsbnConflictException;
 import com.library.exception.ResourceNotFoundException;
 import com.library.model.Book;
@@ -8,9 +9,11 @@ import com.library.repository.BorrowRecordRepository;
 import com.library.service.interfaces.BookService;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
+import org.springframework.context.ApplicationEventPublisher;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
+import java.time.LocalDateTime;
 import java.util.List;
 import java.util.Set;
 
@@ -21,10 +24,13 @@ public class BookServiceImpl implements com.library.service.interfaces.BookServi
 
     private final BookRepository bookRepository;
     private final BorrowRecordRepository borrowRecordRepository;
+    private final ApplicationEventPublisher eventPublisher;
 
-    public BookServiceImpl(BookRepository bookRepository, BorrowRecordRepository borrowRecordRepository) {
+    public BookServiceImpl(BookRepository bookRepository, BorrowRecordRepository borrowRecordRepository,
+                           ApplicationEventPublisher eventPublisher) {
         this.bookRepository = bookRepository;
         this.borrowRecordRepository = borrowRecordRepository;
+        this.eventPublisher = eventPublisher;
     }
 
     @Override
@@ -53,6 +59,9 @@ public class BookServiceImpl implements com.library.service.interfaces.BookServi
 
         Book saved = bookRepository.save(book);
         LOGGER.info(String.format("Book registered successfully with id: [%s], isbn: [%s]", saved.getId(), isbn));
+        // Delivered to Kafka only after the transaction commits (see BookCreatedEventKafkaPublisher).
+        eventPublisher.publishEvent(new BookCreatedEvent(
+                saved.getId(), saved.getIsbn(), saved.getTitle(), saved.getAuthor(), LocalDateTime.now()));
         return saved;
     }
 

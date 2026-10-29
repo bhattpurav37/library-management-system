@@ -1,5 +1,6 @@
 package com.library.service;
 
+import com.library.event.BookCreatedEvent;
 import com.library.exception.IsbnConflictException;
 import com.library.model.Book;
 import com.library.repository.BookRepository;
@@ -10,6 +11,7 @@ import org.junit.jupiter.api.extension.ExtendWith;
 import org.mockito.InjectMocks;
 import org.mockito.Mock;
 import org.mockito.junit.jupiter.MockitoExtension;
+import org.springframework.context.ApplicationEventPublisher;
 
 import java.util.List;
 import java.util.Optional;
@@ -26,6 +28,8 @@ class BookServiceTest {
     private BookRepository bookRepository;
     @Mock
     private BorrowRecordRepository borrowRecordRepository;
+    @Mock
+    private ApplicationEventPublisher eventPublisher;
 
     @InjectMocks
     private com.library.service.BookServiceImpl bookService;
@@ -42,6 +46,7 @@ class BookServiceTest {
 
         assertThat(saved.getIsbn()).isEqualTo(isbn);
         verify(bookRepository).save(any(Book.class));
+        verify(eventPublisher).publishEvent(any(BookCreatedEvent.class));
     }
 
     @Test
@@ -56,6 +61,7 @@ class BookServiceTest {
 
         assertThat(saved.getIsbn()).isEqualTo(isbn);
         verify(bookRepository).save(any(Book.class));
+        verify(eventPublisher).publishEvent(any(BookCreatedEvent.class));
     }
 
     @Test
@@ -69,6 +75,7 @@ class BookServiceTest {
                 .isInstanceOf(IsbnConflictException.class);
 
         verify(bookRepository, never()).save(any());
+        verify(eventPublisher, never()).publishEvent(any());
     }
 
     @Test

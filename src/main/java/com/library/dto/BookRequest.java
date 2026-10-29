@@ -34,6 +34,7 @@ public class BookRequest implements Serializable {
     private String title;
 
     @NotBlank(message = "author is required")
+    @Pattern(regexp = "^[\\p{L}\\d][\\p{L}\\d .'-]*$", message = "author must not contain special characters")
     @Schema(description = "Author of the book", example = "Robert C. Martin", requiredMode = Schema.RequiredMode.REQUIRED)
     private String author;
 }
