@@ -25,6 +25,9 @@ class BorrowingControllerIT {
     @Autowired
     private ObjectMapper objectMapper;
 
+    @Autowired
+    private SecurityTestSupport security;
+
     @Test
     void secondBorrowerCannotBorrowBookThatIsAlreadyOut() throws Exception {
         Long bookId = registerBook("9780596007126", "Head First Design Patterns", "Eric Freeman");
@@ -35,6 +38,7 @@ class BorrowingControllerIT {
             put("borrowerId", borrower1);
         }});
         mockMvc.perform(post("/api/v1/books/" + bookId + "/borrow")
+                        .header("Authorization", security.borrowerBearer())
                         .contentType("application/json")
                         .content(borrowBody1))
                 .andExpect(status().isCreated());
@@ -43,17 +47,20 @@ class BorrowingControllerIT {
             put("borrowerId", borrower2);
         }});
         mockMvc.perform(post("/api/v1/books/" + bookId + "/borrow")
+                        .header("Authorization", security.borrowerBearer())
                         .contentType("application/json")
                         .content(borrowBody2))
                 .andExpect(status().isConflict());
 
         // returning it should free it up again
         mockMvc.perform(post("/api/v1/books/" + bookId + "/return")
+                        .header("Authorization", security.borrowerBearer())
                         .contentType("application/json")
                         .content(borrowBody1))
                 .andExpect(status().isOk());
 
         mockMvc.perform(post("/api/v1/books/" + bookId + "/borrow")
+                        .header("Authorization", security.borrowerBearer())
                         .contentType("application/json")
                         .content(borrowBody2))
                 .andExpect(status().isCreated());
@@ -61,6 +68,7 @@ class BorrowingControllerIT {
 
     private Long registerBook(String isbn, String title, String author) throws Exception {
         MvcResult result = mockMvc.perform(post("/api/v1/books")
+                        .header("Authorization", security.librarianBearer())
                         .contentType("application/json")
                         .content(objectMapper.writeValueAsString(new BookRequest(isbn, title, author))))
                 .andExpect(status().isCreated())
@@ -70,6 +78,7 @@ class BorrowingControllerIT {
 
     private Long registerBorrower(String name, String email) throws Exception {
         MvcResult result = mockMvc.perform(post("/api/v1/borrowers")
+                        .header("Authorization", security.librarianBearer())
                         .contentType("application/json")
                         .content(objectMapper.writeValueAsString(new BorrowerRequest(name, email))))
                 .andExpect(status().isCreated())

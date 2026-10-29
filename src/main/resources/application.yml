@@ -26,3 +26,12 @@ logging:
   level:
     root: INFO
     com.library: ${LOG_LEVEL:INFO}
+
+app:
+  security:
+    jwt:
+      # HS256 signing key for both issuing and validating access tokens. Base64-encoded,
+      # env-overridable so production can inject its own secret (12-factor). The default is a
+      # throwaway dev key long enough for HS256 (>= 256 bits).
+      secret: ${JWT_SECRET:bGlicmFyeS1kZXYtc2VjcmV0LWtleS1mb3Itand0LXNpZ25pbmctMTIzNDU2Nzg5MA==}
+      access-token-ttl-minutes: ${JWT_TTL_MINUTES:60}
