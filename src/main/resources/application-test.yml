@@ -8,3 +8,7 @@ spring:
     hibernate:
       ddl-auto: create-drop
     show-sql: false
+  kafka:
+    # ITs have no broker; the listener must not try to connect or consume.
+    listener:
+      auto-startup: false
