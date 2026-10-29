@@ -1,0 +1,244 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<title>Library Management System — Kafka Event Flow</title>
+<style>
+  * { box-sizing: border-box; margin: 0; padding: 0; }
+  body { font-family: 'Segoe UI', Arial, sans-serif; background: #f4f6fa; color: #1a2233; padding: 32px; font-size: 14px; }
+  .page { max-width: 1050px; margin: 0 auto; }
+  h1 { font-size: 26px; color: #0d2b52; margin-bottom: 4px; }
+  .subtitle { color: #5a6b87; margin-bottom: 24px; font-size: 15px; }
+  h2 { font-size: 18px; color: #0d2b52; margin: 28px 0 12px 0; border-left: 4px solid #2f6fed; padding-left: 10px; }
+
+  /* ===== flow diagram ===== */
+  .flow { background: #fff; border-radius: 12px; padding: 28px; box-shadow: 0 1px 6px rgba(13,43,82,.08); }
+  .row { display: flex; align-items: stretch; justify-content: center; gap: 0; flex-wrap: nowrap; }
+  .node { border-radius: 10px; padding: 12px 14px; text-align: center; min-width: 128px; display: flex; flex-direction: column; justify-content: center; }
+  .node .t { font-weight: 700; font-size: 13px; line-height: 1.25; }
+  .node .d { font-size: 11px; margin-top: 5px; line-height: 1.35; color: #44506b; }
+  .http    { background: #e8f0fe; border: 2px solid #2f6fed; }
+  .app     { background: #e6f6ec; border: 2px solid #1e8e4e; }
+  .spring  { background: #fff4e0; border: 2px solid #d98a00; }
+  .kafka   { background: #f3e8fd; border: 2px solid #7c3aed; }
+  .down    { background: #fde8ea; border: 2px solid #d64550; }
+  .arrow { display: flex; flex-direction: column; justify-content: center; align-items: center; padding: 0 4px; min-width: 86px; }
+  .arrow .line { color: #7c8aa5; font-size: 22px; font-weight: 700; }
+  .arrow .lbl { font-size: 10.5px; color: #5a6b87; text-align: center; margin-top: 2px; line-height: 1.3; }
+
+  .note { background: #fffbe8; border: 1px solid #e6d47a; border-radius: 8px; padding: 10px 14px; margin-top: 14px; font-size: 12.5px; color: #5c4d1a; }
+  .note b { color: #7a6417; }
+
+  /* ===== tables ===== */
+  table { width: 100%; border-collapse: collapse; background: #fff; border-radius: 10px; overflow: hidden; box-shadow: 0 1px 6px rgba(13,43,82,.08); }
+  th { background: #0d2b52; color: #fff; text-align: left; padding: 9px 12px; font-size: 12.5px; }
+  td { padding: 8px 12px; border-bottom: 1px solid #e8ecf3; font-size: 12.5px; vertical-align: top; }
+  tr:last-child td { border-bottom: none; }
+  code, .mono { font-family: Consolas, 'Courier New', monospace; font-size: 11.5px; background: #eef2f9; padding: 1px 5px; border-radius: 4px; color: #0d2b52; }
+  .file { font-weight: 700; }
+  .tag { display: inline-block; font-size: 10px; font-weight: 700; border-radius: 4px; padding: 2px 6px; }
+  .prod { background: #e6f6ec; color: #1e8e4e; }
+  .cons { background: #fde8ea; color: #d64550; }
+  .both { background: #fff4e0; color: #a06a00; }
+
+  .grid2 { display: grid; grid-template-columns: 1fr 1fr; gap: 16px; }
+  .card { background: #fff; border-radius: 10px; padding: 14px 16px; box-shadow: 0 1px 6px rgba(13,43,82,.08); }
+  .card h3 { font-size: 13.5px; color: #0d2b52; margin-bottom: 8px; }
+  .card ul { list-style: none; }
+  .card li { font-size: 12px; padding: 4px 0 4px 16px; position: relative; line-height: 1.4; color: #2a3550; }
+  .card li::before { content: '▸'; position: absolute; left: 0; color: #2f6fed; }
+
+  .snippet { background: #0d2b52; color: #dbe6ff; border-radius: 8px; padding: 12px 14px; font-family: Consolas, monospace; font-size: 11.5px; line-height: 1.55; white-space: pre; overflow-x: auto; }
+  .snippet .c { color: #7fd18c; }
+  .snippet .k { color: #ffd479; }
+  .snippet .s { color: #9fd0ff; }
+
+  @media print {
+    body { background: #fff; padding: 10px; font-size: 12px; }
+    .flow, table, .card, .snippet { box-shadow: none; border: 1px solid #d5dcea; }
+    .page { max-width: 100%; }
+    h2 { page-break-after: avoid; }
+    .row { page-break-inside: avoid; }
+  }
+</style>
+</head>
+<body>
+<div class="page">
+
+  <h1>Kafka Event Flow — Library Management System</h1>
+  <div class="subtitle">How a "book created" event travels through the app &nbsp;•&nbsp; Spring Boot 3.2.5 / spring-kafka &nbsp;•&nbsp; Topic: <span class="mono">library.book-created.v1</span></div>
+
+  <!-- ============ FLOW ============ -->
+  <h2>1 &nbsp;End-to-end flow (producer → broker → consumer)</h2>
+  <div class="flow">
+    <div class="row">
+      <div class="node http">
+        <div class="t">POST /api/v1/books</div>
+        <div class="d">Client + JWT<br>(LIBRARIAN role)</div>
+      </div>
+      <div class="arrow"><div class="line">─▶</div><div class="lbl">HTTP 201<br>JSON body</div></div>
+      <div class="node app">
+        <div class="t">BookController</div>
+        <div class="d">validates request<br>builds Book entity</div>
+      </div>
+      <div class="arrow"><div class="line">─▶</div><div class="lbl">register(book)</div></div>
+      <div class="node app">
+        <div class="t">BookServiceImpl</div>
+        <div class="d">@Transactional<br>check ISBN conflict<br>save to DB, then<br><b>publishEvent()</b></div>
+      </div>
+      <div class="arrow"><div class="line">─▶</div><div class="lbl">Spring<br>ApplicationEvent</div></div>
+      <div class="node spring">
+        <div class="t">BookCreatedEvent<br>KafkaPublisher</div>
+        <div class="d">@TransactionalEventListener<br>phase = AFTER_COMMIT</div>
+      </div>
+    </div>
+
+    <div class="row" style="margin-top:18px">
+      <div class="node down">
+        <div class="t">Downstream reaction</div>
+        <div class="d">(future: search index,<br>notifications, analytics)</div>
+      </div>
+      <div class="arrow"><div class="line">◀─</div><div class="lbl">onBookCreated(event)<br>logs the event</div></div>
+      <div class="node kafka" style="min-width:200px">
+        <div class="t">BookCreatedEvent<br>KafkaConsumer</div>
+        <div class="d">@KafkaListener on<br>library.book-created.v1</div>
+      </div>
+      <div class="arrow"><div class="line">◀─</div><div class="lbl">consume<br>group: book-created<br>JSON → BookCreatedEvent</div></div>
+      <div class="node kafka" style="min-width:210px">
+        <div class="t">KAFKA BROKER</div>
+        <div class="d">topic <b>library.book-created.v1</b><br>3 partitions, key = ISBN<br>(same book → same partition → ordered)</div>
+      </div>
+      <div class="arrow"><div class="line">◀─</div><div class="lbl">kafkaTemplate.send(<br>topic, isbn, event)<br>acks=all, non-blocking</div></div>
+    </div>
+
+    <div class="note">
+      <b>Why AFTER_COMMIT?</b> The Kafka send only fires <b>after the DB transaction commits</b>. If the registration
+      fails or rolls back (e.g. ISBN conflict → 409), <b>no event is ever published</b>. The service layer has zero
+      Kafka imports — it only knows Spring's <span class="mono">ApplicationEventPublisher</span>.
+      &nbsp;<b>Failure isolation:</b> if the broker is down, the send fails in the background (<span class="mono">whenComplete</span> logs the error) but the
+      API still returns 201 — the book <i>is</i> created.
+    </div>
+  </div>
+
+  <!-- ============ EVENT ============ -->
+  <h2>2 &nbsp;The event on the wire</h2>
+  <div class="snippet">{
+  <span class="s">"bookId"</span>: 3,
+  <span class="s">"isbn"</span>: <span class="s">"9780201616224"</span>,
+  <span class="s">"title"</span>: <span class="s">"The Pragmatic Programmer"</span>,
+  <span class="s">"author"</span>: <span class="s">"Andrew Hunt"</span>,
+  <span class="s">"occurredAt"</span>: <span class="s">"2026-10-29T19:02:13.4528612"</span>
+}
+<span class="c">// Kafka message:  key = ISBN (string)   value = this JSON (no type-info headers)</span></div>
+
+  <!-- ============ CONFIG MAPPING ============ -->
+  <h2>3 &nbsp;application.yml — every Kafka property and where it is used</h2>
+  <table>
+    <tr><th style="width:32%">Property</th><th style="width:26%">Value (default)</th><th>Where it is used / what it does</th></tr>
+    <tr>
+      <td><code>spring.kafka.bootstrap-servers</code></td>
+      <td><code>localhost:9092</code><br><span style="color:#7c8aa5">(env KAFKA_BOOTSTRAP_SERVERS)</span></td>
+      <td>Read by <b>KafkaProducerConfig</b> and <b>KafkaConsumerConfig</b> via <code>env.getProperty()</code>. The broker address both clients connect to. In Docker dev setup this maps to the host listener.</td>
+    </tr>
+    <tr>
+      <td><code>spring.kafka.producer.acks</code></td>
+      <td><code>all</code></td>
+      <td><b>KafkaProducerConfig</b> — wait for all in-sync replicas to confirm. Strongest durability.</td>
+    </tr>
+    <tr>
+      <td><code>spring.kafka.producer.retries</code></td>
+      <td><code>10</code></td>
+      <td><b>KafkaProducerConfig</b> — producer retries a failed send up to 10 times.</td>
+    </tr>
+    <tr>
+      <td><code>spring.kafka.consumer.group-id</code></td>
+      <td><code>library-management-system</code><br><span style="color:#7c8aa5">(env KAFKA_CONSUMER_GROUP)</span></td>
+      <td>Read by <b>KafkaConsumerConfig</b>. <i>Note:</i> the actual group is <code>book-created</code> because the <code>@KafkaListener(id=...)</code> id overrides it.</td>
+    </tr>
+    <tr>
+      <td><code>spring.kafka.consumer.auto-offset-reset</code></td>
+      <td><code>earliest</code></td>
+      <td><b>KafkaConsumerConfig</b> — a brand-new group starts reading from the beginning of the topic, so it sees events published before it first connected.</td>
+    </tr>
+    <tr>
+      <td><code>spring.kafka.listener.auto-startup</code><br><span style="color:#7c8aa5">(application-test.yml only)</span></td>
+      <td><code>false</code></td>
+      <td>Test profile only — ITs run without a broker, so the listener container must not start. Set in <code>application-test.yml</code>.</td>
+    </tr>
+    <tr>
+      <td><code>app.kafka.topics.book-created</code></td>
+      <td><code>library.book-created.v1</code><br><span style="color:#7c8aa5">(env KAFKA_TOPIC_BOOK_CREATED)</span></td>
+      <td><b>Publisher:</b> injected with <code>@Value</code> into <code>BookCreatedEventKafkaPublisher</code>. <b>Consumer:</b> referenced in the <code>@KafkaListener(topics = "${app.kafka.topics.book-created}")</code>. One property wires both sides to the same topic.</td>
+    </tr>
+  </table>
+
+  <!-- ============ CLASSES ============ -->
+  <h2>4 &nbsp;Who does what (all Kafka classes)</h2>
+  <div class="grid2">
+    <div class="card">
+      <h3>🔧 Config — <span class="mono">com.library.config</span></h3>
+      <ul>
+        <li><b>KafkaProducerConfig</b> — builds the typed <span class="mono">KafkaTemplate&lt;String, BookCreatedEvent&gt;</span>. JsonSerializer reuses the app's ObjectMapper; type-info headers disabled so consumers don't need our classes.</li>
+        <li><b>KafkaConsumerConfig</b> — builds the listener container factory. JsonDeserializer fixed to <span class="mono">BookCreatedEvent</span> (no headers needed), wrapped in <span class="mono">ErrorHandlingDeserializer</span> so one bad message is skipped, not fatal. Ack per record.</li>
+      </ul>
+    </div>
+    <div class="card">
+      <h3>📦 Events — <span class="mono">com.library.event</span></h3>
+      <ul>
+        <li><b>BookCreatedEvent</b> — Java record: bookId, isbn, title, author, occurredAt. The shared contract on the wire.</li>
+        <li><b>BookCreatedEventKafkaPublisher</b> — listens for the Spring event AFTER_COMMIT, sends to Kafka keyed by ISBN.</li>
+        <li><b>BookCreatedEventKafkaConsumer</b> — <span class="mono">@KafkaListener</span> that receives and logs each event.</li>
+      </ul>
+    </div>
+    <div class="card">
+      <h3>🚀 Producer side — <span class="mono">BookServiceImpl</span></h3>
+      <ul>
+        <li>Inside the <span class="mono">@Transactional register()</span>: after save, calls <span class="mono">eventPublisher.publishEvent(new BookCreatedEvent(...))</span></li>
+        <li>Knows nothing about Kafka — fully decoupled via Spring events.</li>
+      </ul>
+    </div>
+    <div class="card">
+      <h3>🧪 Tests — no broker needed</h3>
+      <ul>
+        <li>Unit: publisher &amp; consumer tested with Mockito mocks.</li>
+        <li>ITs: <span class="mono">@MockBean KafkaTemplate</span> (no real send) + listener auto-startup off (test profile).</li>
+      </ul>
+    </div>
+  </div>
+
+  <!-- ============ RUN LOCALLY ============ -->
+  <h2>5 &nbsp;Run it locally (Docker)</h2>
+  <div class="snippet"><span class="c"># 1. broker (KRaft, no ZooKeeper) — dual listener: containers use kafka:29092, host apps use localhost:9092</span>
+docker network create kafka-net
+docker run -d --name kafka --network kafka-net -p 9092:9092 `
+  -e KAFKA_NODE_ID=1 -e KAFKA_PROCESS_ROLES=broker,controller `
+  -e KAFKA_LISTENERS=PLAINTEXT://:29092,CONTROLLER://:29093,PLAINTEXT_HOST://:9092 `
+  -e KAFKA_ADVERTISED_LISTENERS=PLAINTEXT://kafka:29092,PLAINTEXT_HOST://localhost:9092 `
+  -e KAFKA_CONTROLLER_LISTENER_NAMES=CONTROLLER `
+  -e KAFKA_LISTENER_SECURITY_PROTOCOL_MAP=CONTROLLER:PLAINTEXT,PLAINTEXT:PLAINTEXT,PLAINTEXT_HOST:PLAINTEXT `
+  -e KAFKA_CONTROLLER_QUORUM_VOTERS=1@kafka:29093 `
+  -e KAFKA_OFFSETS_TOPIC_REPLICATION_FACTOR=1 -e KAFKA_NUM_PARTITIONS=3 `
+  apache/kafka:3.7.0
+
+<span class="c"># 2. web GUI — browse topics &amp; messages at http://localhost:8080</span>
+docker run -d --name kafka-ui --network kafka-net -p 8080:8080 `
+  -e KAFKA_CLUSTERS_0_NAME=local -e KAFKA_CLUSTERS_0_BOOTSTRAPSERVERS=kafka:29092 `
+  provectuslabs/kafka-ui:latest
+
+<span class="c"># 3. watch messages on the topic (CLI alternative to the GUI)</span>
+docker exec -it kafka /opt/kafka/bin/kafka-console-consumer.sh `
+  --bootstrap-server localhost:29092 --topic library.book-created.v1 --from-beginning --property print.key=true
+
+<span class="c"># 4. start the app, mint a token, register a book → event appears</span>
+mvn spring-boot:run
+curl -X POST localhost:8881/library/api/v1/auth/token -H "Content-Type: application/json" -d '{<span class="s">"role"</span>:"LIBRARIAN"}'
+curl -X POST localhost:8881/library/api/v1/books -H "Authorization: Bearer &lt;token&gt;" `
+  -H "Content-Type: application/json" -d '{<span class="s">"isbn"</span>:<span class="s">"9780132350884"</span>,<span class="s">"title"</span>:<span class="s">"Clean Code"</span>,<span class="s">"author"</span>:<span class="s">"Robert C. Martin"</span>}'</div>
+
+  <div class="note" style="margin-top:20px">
+    <b>Tip:</b> press <b>Ctrl+P</b> → "Save as PDF" to keep this as a PDF handout.
+  </div>
+
+</div>
+</body>
+</html>
