@@ -12,6 +12,9 @@ spring:
     producer:
       acks: all
       retries: 10
+    consumer:
+      group-id: ${KAFKA_CONSUMER_GROUP:library-management-system}
+      auto-offset-reset: earliest
 
 server:
   port: ${SERVER_PORT:8881}
